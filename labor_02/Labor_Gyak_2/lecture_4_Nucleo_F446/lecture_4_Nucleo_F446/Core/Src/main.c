@@ -31,7 +31,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define DEBOUNCING_TRESHOLD 20
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -45,7 +45,12 @@ UART_HandleTypeDef huart3;
 PCD_HandleTypeDef hpcd_USB_OTG_FS;
 
 /* USER CODE BEGIN PV */
+uint8_t counter = 0;
 
+uint8_t debounce_count = 0;
+uint8_t current_state_debounce = 0;
+uint8_t previous_state_edge = 0;
+uint8_t raw_state = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -99,33 +104,56 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-    	{
-    	    HAL_GPIO_WritePin(GPIOD, LD_PD7_Pin, GPIO_PIN_SET);
-    	    HAL_Delay(200);
-    	    HAL_GPIO_WritePin(GPIOD, LD_PD7_Pin, GPIO_PIN_RESET);
 
-    	    HAL_GPIO_WritePin(GPIOD, LD_PD6_Pin, GPIO_PIN_SET);
-    	    HAL_Delay(200);
-    	    HAL_GPIO_WritePin(GPIOD, LD_PD6_Pin, GPIO_PIN_RESET);
+while (1)
+	  {
+	      raw_state = HAL_GPIO_ReadPin(
+	          Gomb_PE5_GPIO_Port,
+	          Gomb_PE5_Pin
+	      );
 
-    	    HAL_GPIO_WritePin(GPIOD, LD_PD5_Pin, GPIO_PIN_SET);
-    	    HAL_Delay(200);
-    	    HAL_GPIO_WritePin(GPIOD, LD_PD5_Pin, GPIO_PIN_RESET);
+	      if (raw_state == GPIO_PIN_SET)
+	      {
+	          if (debounce_count < DEBOUNCING_TRESHOLD)
+	              debounce_count++;
+	      }
+	      else
+	      {
+	          if (debounce_count > 0)
+	              debounce_count--;
+	      }
 
-    	    HAL_GPIO_WritePin(GPIOD, LD_PD4_Pin, GPIO_PIN_SET);
-    	    HAL_Delay(200);
-    	    HAL_GPIO_WritePin(GPIOD, LD_PD4_Pin, GPIO_PIN_RESET);
+	      if (debounce_count >= DEBOUNCING_TRESHOLD)
+	      {
+	          current_state_debounce = 1;
+	      }
+	      else if (debounce_count == 0)
+	      {
+	          current_state_debounce = 0;
+	      }
 
-    	    HAL_GPIO_WritePin(GPIOD, LD_PD5_Pin, GPIO_PIN_SET);
-    	    HAL_Delay(200);
-    	    HAL_GPIO_WritePin(GPIOD, LD_PD5_Pin, GPIO_PIN_RESET);
+	      if (current_state_debounce &&
+	          !previous_state_edge)
+	      {
+	          counter = (counter + 1) & 0x0F;
+	      }
 
-    	    HAL_GPIO_WritePin(GPIOD, LD_PD6_Pin, GPIO_PIN_SET);
-    	    HAL_Delay(200);
-    	    HAL_GPIO_WritePin(GPIOD, LD_PD6_Pin, GPIO_PIN_RESET);
-    	}
+	      previous_state_edge = current_state_debounce;
 
+	      HAL_GPIO_WritePin(GPIOD, LD_PD7_Pin,
+	          (counter & 0x08) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+
+	      HAL_GPIO_WritePin(GPIOD, LD_PD6_Pin,
+	          (counter & 0x04) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+
+	      HAL_GPIO_WritePin(GPIOD, LD_PD5_Pin,
+	          (counter & 0x02) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+
+	      HAL_GPIO_WritePin(GPIOD, LD_PD4_Pin,
+	          (counter & 0x01) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+
+	      HAL_Delay(1);
+	  }
   /* USER CODE END 3 */
 }
 
